@@ -125,3 +125,19 @@ task-manager/
 
 This project is part of a home assignment.
 
+
+## Photos
+
+ - Logib page : 
+
+<img width="860" height="630" alt="image" src="https://github.com/user-attachments/assets/2688d145-1f89-46c2-8312-40029a7472d9" />
+
+- Projects page :
+
+<img width="1299" height="742" alt="image" src="https://github.com/user-attachments/assets/766b858a-2e34-424d-b11e-395e0bf101f2" />
+
+
+- Tasks page :
+    
+  <img width="1299" height="742" alt="image" src="https://github.com/user-attachments/assets/ec798b5e-424b-47eb-922e-d99751d30671" />
+
