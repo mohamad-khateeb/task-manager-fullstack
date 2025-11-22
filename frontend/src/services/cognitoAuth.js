@@ -21,9 +21,32 @@ export const authenticateUser = async (email, password) => {
     const data = await response.json();
 
     if (!response.ok) {
-      // Handle errors
-      const error = new Error(data.message || 'Authentication failed');
-      error.code = response.status === 401 ? 'NotAuthorizedException' : 'UnknownError';
+      // Handle errors with improved error messages
+      const errorMessage = data.message || 'Authentication failed';
+      const error = new Error(errorMessage);
+      
+      // Set error code based on status and message
+      if (response.status === 401) {
+        error.code = 'NotAuthorizedException';
+      } else if (response.status === 403) {
+        if (errorMessage.includes('not confirmed') || errorMessage.includes('verify')) {
+          error.code = 'UserNotConfirmedException';
+        } else if (errorMessage.includes('Temporary password') || errorMessage.includes('reset required')) {
+          error.code = 'PasswordResetRequiredException';
+        } else {
+          error.code = 'ForbiddenException';
+        }
+      } else if (response.status === 404) {
+        error.code = 'UserNotFoundException';
+      } else {
+        error.code = 'UnknownError';
+      }
+      
+      // Include error code if available
+      if (data.errorCode) {
+        error.errorCode = data.errorCode;
+      }
+      
       throw error;
     }
 

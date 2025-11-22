@@ -29,17 +29,22 @@ const Login = () => {
     } catch (err) {
       console.error('Login error:', err);
       
-      // Handle different error types
+      // Handle different error types with improved messages
       let errorMessage = 'Login failed. Please check your credentials.';
       
       if (err.message) {
+        // Use the detailed error message from backend
         errorMessage = err.message;
       } else if (err.code === 'NotAuthorizedException') {
-        errorMessage = 'Incorrect email or password.';
+        errorMessage = 'Incorrect email or password. Please check your credentials and try again.';
       } else if (err.code === 'UserNotConfirmedException') {
-        errorMessage = 'Your account is not confirmed. Please verify your email.';
+        errorMessage = 'Your account is not confirmed. Please verify your email address in AWS Cognito Console.';
       } else if (err.code === 'UserNotFoundException') {
-        errorMessage = 'User not found. Please check your email.';
+        errorMessage = 'User not found. Please check your email address or contact administrator.';
+      } else if (err.code === 'PasswordResetRequiredException') {
+        errorMessage = 'Password reset required. Please reset your password in AWS Cognito Console.';
+      } else if (err.code === 'ForbiddenException') {
+        errorMessage = 'Access denied. Please contact administrator.';
       }
       
       setError(errorMessage);
