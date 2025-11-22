@@ -26,6 +26,9 @@ A full-stack task management application with AWS Cognito authentication.
 - ✅ Task management (CRUD operations)
 - ✅ Pagination support
 - ✅ Responsive UI
+- ✅ Comprehensive unit tests (44 tests)
+- ✅ Error handling and logging
+- ✅ Production-ready deployment guide
 
 ## Prerequisites
 
@@ -63,12 +66,35 @@ The database tables will be created automatically on first run.
 1. Install dependencies: `cd frontend && npm install`
 2. Start development server: `npm start`
 
+## Testing
+
+### Backend Tests
+
+Run all unit tests:
+```bash
+cd backend
+mvn test
+```
+
+The test suite includes:
+- **44 unit tests** covering all core functionality
+- Service layer tests (ProjectService, TaskService, AuthService)
+- Controller layer tests (ProjectController, TaskController, AuthController)
+- Exception handler tests
+- Test coverage: Core business logic and API endpoints
+
+### Test Results
+```
+Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
+```
+
 ## Configuration
 
 See the following guides for detailed setup:
 - `COGNITO_SETUP_GUIDE.md` - AWS Cognito setup
 - `COGNITO_QUICK_START.md` - Quick reference
 - `HOW_IT_WORKS.md` - Technical details
+- `DEPLOYMENT.md` - **Production deployment guide for 10k+ users/day**
 
 ## API Endpoints
 
