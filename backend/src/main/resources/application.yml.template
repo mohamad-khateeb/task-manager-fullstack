@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:taskdb
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+server:
+  port: 8080
+
+security:
+  oauth2:
+    resourceserver:
+      jwt:
+        jwk-set-uri: https://cognito-idp.YOUR_REGION.amazonaws.com/YOUR_USER_POOL_ID/.well-known/jwks.json
+
+cognito:
+  userPoolId: YOUR_USER_POOL_ID
+  region: YOUR_REGION
+  appClientId: YOUR_APP_CLIENT_ID
+
