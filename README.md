@@ -9,7 +9,7 @@ A full-stack task management application with AWS Cognito authentication.
 - Spring Boot 3.2.0
 - Spring Security with OAuth2 Resource Server
 - AWS Cognito for authentication
-- H2 Database (in-memory)
+- PostgreSQL Database
 - Maven
 
 ### Frontend
@@ -32,15 +32,31 @@ A full-stack task management application with AWS Cognito authentication.
 - Java 21
 - Maven 3.6+
 - Node.js 16+
+- Docker (for PostgreSQL) or PostgreSQL installed locally
 - AWS Cognito User Pool (see setup guides)
 
 ## Setup
+
+### Database Setup
+
+Start PostgreSQL using Docker:
+```bash
+docker-compose up -d
+```
+
+This will start PostgreSQL on port 5432 with:
+- Database: `taskdb`
+- Username: `postgres`
+- Password: `postgres`
 
 ### Backend Setup
 
 1. Copy `backend/src/main/resources/application.yml.template` to `application.yml`
 2. Update `application.yml` with your AWS Cognito configuration
-3. Run: `cd backend && mvn spring-boot:run`
+3. Ensure PostgreSQL is running (via Docker or locally)
+4. Run: `cd backend && mvn spring-boot:run`
+
+The database tables will be created automatically on first run.
 
 ### Frontend Setup
 
