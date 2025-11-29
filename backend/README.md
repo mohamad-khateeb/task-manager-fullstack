@@ -26,12 +26,31 @@ A REST API for a Task Management System built with Spring Boot, featuring AWS Co
 
 ## Prerequisites
 
-- Java 17 or higher
+- Java 21
 - Maven 3.6+
+- PostgreSQL 15+ (or Docker for running PostgreSQL)
 - AWS Cognito User Pool (for authentication)
-- Docker (optional, for containerized deployment)
+- Docker (for PostgreSQL database setup)
 
 ## Configuration
+
+### Database Setup
+
+The application uses PostgreSQL as the persistent database. The easiest way to run PostgreSQL locally is using Docker Compose:
+
+```bash
+# From the project root directory
+docker-compose up -d
+```
+
+This will start PostgreSQL on port 5432 with:
+- Database: `taskdb`
+- Username: `postgres`
+- Password: `postgres`
+
+The database tables will be created automatically on first application startup using Hibernate's `ddl-auto: update`.
+
+Alternatively, you can use a local PostgreSQL installation. Update the connection details in `application.yml` accordingly.
 
 ### AWS Cognito Setup
 
@@ -39,23 +58,50 @@ A REST API for a Task Management System built with Spring Boot, featuring AWS Co
 2. **Create User Groups**:
    - `ADMIN` - for admin users
    - `USER` - for regular users
-3. **Get your JWKS URI**:
-   - Format: `https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json`
-   - Example: `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ABC123XYZ/.well-known/jwks.json`
+3. **Create an App Client** (without client secret, for web applications)
+4. **Enable Authentication Flows**: `ALLOW_USER_PASSWORD_AUTH` and `ALLOW_REFRESH_TOKEN_AUTH`
+5. **Get your configuration values**:
+   - User Pool ID
+   - Region
+   - App Client ID
+   - JWKS URI: `https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json`
 
 ### application.yml Configuration
 
-Update the `application.yml` file with your Cognito configuration:
+1. **Copy the template file**:
+   ```bash
+   cp src/main/resources/application.yml.template src/main/resources/application.yml
+   ```
+
+2. **Update `application.yml`** with your configuration:
 
 ```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/taskdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
 security:
   oauth2:
     resourceserver:
       jwt:
         jwk-set-uri: https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json
+
+cognito:
+  userPoolId: YOUR_USER_POOL_ID
+  region: YOUR_REGION
+  appClientId: YOUR_APP_CLIENT_ID
 ```
 
-Replace `{region}` and `{userPoolId}` with your actual AWS Cognito values.
+Replace the placeholder values with your actual AWS Cognito configuration.
 
 ### Cognito Groups to Roles Mapping
 
@@ -66,6 +112,13 @@ The application automatically maps Cognito groups to Spring Security roles:
 Make sure your Cognito ID tokens include the `cognito:groups` claim.
 
 ## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description | Authentication Required |
+|--------|----------|-------------|------------------------|
+| POST | `/api/auth/login` | Authenticate user with email/password | No (public endpoint) |
+| GET | `/api/auth/diagnostic` | Health check endpoint | No (public endpoint) |
 
 ### Projects
 
@@ -89,17 +142,48 @@ Make sure your Cognito ID tokens include the `cognito:groups` claim.
 
 ## Authentication
 
-All API endpoints under `/api/**` require authentication. You must include a valid AWS Cognito ID token in the Authorization header:
+All API endpoints under `/api/**` (except `/api/auth/login` and `/api/auth/diagnostic`) require authentication. You must include a valid AWS Cognito ID token in the Authorization header:
 
 ```
 Authorization: Bearer <your-cognito-id-token>
 ```
 
+### Login Endpoint
+
+The application provides a login endpoint that handles authentication with AWS Cognito:
+
+**POST `/api/auth/login`**
+
+Request body:
+```json
+{
+  "email": "user@example.com",
+  "password": "userpassword"
+}
+```
+
+Response (success):
+```json
+{
+  "idToken": "eyJraWQiOiJ...",
+  "accessToken": "eyJraWQiOiJ...",
+  "refreshToken": "eyJjdHkiOiJ...",
+  "expiresIn": 3600
+}
+```
+
+The `idToken` should be used in subsequent API requests in the `Authorization` header.
+
 ### Getting a Cognito ID Token
 
-1. Use AWS Cognito Hosted UI or
-2. Use AWS Cognito SDK to authenticate and get the ID token
-3. Include the token in the `Authorization` header of your requests
+There are several ways to obtain a Cognito ID token:
+
+1. **Use the login endpoint** (recommended): `POST /api/auth/login` with email/password
+2. **Use AWS Cognito Hosted UI**: Redirect users to Cognito's hosted UI
+3. **Use AWS Cognito SDK**: Authenticate programmatically using AWS SDK
+4. **Manual token retrieval**: Use AWS CLI (see helper scripts in project root)
+
+Once you have the ID token, include it in the `Authorization` header of your requests.
 
 ## Pagination
 
@@ -142,15 +226,41 @@ GET /api/projects/1/tasks?page=0&size=5&sort=status,desc
 ### Running Tests
 
 ```bash
+cd backend
 mvn test
 ```
 
 ### Test Coverage
 
-The project includes unit tests for:
-- `ProjectServiceTest` - Service layer tests for projects
-- `TaskServiceTest` - Service layer tests for tasks
-- `ProjectControllerTest` - Controller layer tests for projects
+The project includes **44 comprehensive unit tests** covering all core functionality:
+
+**Service Layer Tests:**
+- `ProjectServiceTest` - Project CRUD operations, pagination, validation
+- `TaskServiceTest` - Task CRUD operations, project association, status management
+- `AuthServiceTest` - Authentication flow, error handling, temporary password detection
+
+**Controller Layer Tests:**
+- `ProjectControllerTest` - Project endpoints, pagination, role-based access
+- `TaskControllerTest` - Task endpoints, pagination, validation
+- `AuthControllerTest` - Login endpoint, error responses, diagnostic endpoint
+
+**Exception Handler Tests:**
+- `ApiExceptionHandlerTest` - Global exception handling, error response formatting
+
+### Test Results
+
+All tests should pass with:
+```
+Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
+```
+
+The test suite validates:
+- CRUD operations for projects and tasks
+- Pagination functionality
+- Role-based access control (ADMIN vs USER)
+- Authentication and authorization
+- Error handling and validation
+- Exception responses
 
 ## Docker
 
@@ -173,22 +283,41 @@ docker run -p 8080:8080 \
   task-manager-backend
 ```
 
-### Docker Compose (Optional)
+### Docker Compose for Database
 
-You can create a `docker-compose.yml` for easier deployment:
+The project includes a `docker-compose.yml` file in the root directory for running PostgreSQL:
 
-```yaml
-version: '3.8'
-services:
-  backend:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json
+```bash
+# From project root
+docker-compose up -d
 ```
 
+This starts PostgreSQL in a container with persistent data storage.
+
 ## Example Requests
+
+### Login
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "userpassword"
+  }'
+```
+
+Response:
+```json
+{
+  "idToken": "eyJraWQiOiJ...",
+  "accessToken": "eyJraWQiOiJ...",
+  "refreshToken": "eyJjdHkiOiJ...",
+  "expiresIn": 3600
+}
+```
+
+Save the `idToken` for subsequent requests.
 
 ### Create a Project
 
@@ -308,23 +437,25 @@ Common HTTP status codes:
 
 ### Running the Application
 
-```bash
-# Build the project
-mvn clean install
+1. **Start PostgreSQL** (if not already running):
+   ```bash
+   # From project root
+   docker-compose up -d
+   ```
 
-# Run the application
-mvn spring-boot:run
-```
+2. **Configure the application**:
+   - Copy `src/main/resources/application.yml.template` to `src/main/resources/application.yml`
+   - Update with your Cognito configuration
+
+3. **Run the application**:
+   ```bash
+   cd backend
+   mvn spring-boot:run
+   ```
 
 The application will start on `http://localhost:8080`
 
-### H2 Console
-
-For development, the H2 console is available at:
-- URL: `http://localhost:8080/h2-console`
-- JDBC URL: `jdbc:h2:mem:taskdb`
-- Username: `sa`
-- Password: (empty)
+The database tables will be created automatically on first startup.
 
 ## Project Structure
 
@@ -334,6 +465,7 @@ com.example.taskmanager
 ├── config/
 │   └── SecurityConfig.java
 ├── controller/
+│   ├── AuthController.java
 │   ├── ProjectController.java
 │   └── TaskController.java
 ├── dto/
@@ -349,6 +481,7 @@ com.example.taskmanager
 │   ├── ProjectRepository.java
 │   └── TaskRepository.java
 └── service/
+    ├── AuthService.java
     ├── ProjectService.java
     └── TaskService.java
 ```
